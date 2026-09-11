@@ -56,6 +56,57 @@
 
   main{flex:1; padding:0 0 96px;}
 
+  /* list controls (search + tabs) */
+  .list-controls{
+    padding:12px 16px 0;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+  }
+  .search-wrap{position:relative;}
+  .search-input{
+    width:100%;
+    border:1.5px solid var(--line-strong);
+    background:#fff;
+    color:var(--ink);
+    font-family:inherit;
+    font-size:14px;
+    padding:10px 34px 10px 10px;
+  }
+  .search-input:focus{outline:2px solid var(--ink); outline-offset:1px;}
+  .search-clear{
+    position:absolute; right:8px; top:50%; transform:translateY(-50%);
+    background:none; border:none; color:var(--ink-soft);
+    font-size:16px; cursor:pointer; padding:2px 4px; line-height:1;
+    display:none;
+  }
+  .search-input:not(:placeholder-shown) ~ .search-clear,
+  .search-clear.show{display:block;}
+
+  .tabs{display:flex; margin-top:10px; gap:0;}
+  .tab{
+    flex:1;
+    background:none;
+    border:1.5px solid var(--line-strong);
+    border-bottom:none;
+    color:var(--ink-soft);
+    font-family:inherit;
+    font-size:12px;
+    font-weight:700;
+    padding:9px 6px;
+    cursor:pointer;
+    margin-right:-1.5px;
+    position:relative;
+    top:1px;
+  }
+  .tab:last-child{margin-right:0;}
+  .tab.active{
+    background:var(--paper-raised);
+    color:var(--ink);
+    border-bottom:1.5px solid var(--paper-raised);
+    top:0;
+    padding-bottom:10.5px;
+  }
+
   /* list */
   .thread-row{
     display:block; width:100%; text-align:left; background:none; border:none;
@@ -68,6 +119,28 @@
   .thread-row .count{font-size:11px; color:var(--ink-soft); white-space:nowrap; font-family:'JetBrains Mono',monospace;}
   .thread-row .meta{font-size:11px; color:var(--ink-soft); margin-top:3px; font-family:'JetBrains Mono',monospace;}
   .thread-row .excerpt{font-size:12.5px; color:var(--ink-soft); margin-top:6px; line-height:1.5; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+
+  .rank-badge{
+    display:inline-block;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;
+    font-weight:700;
+    color:var(--paper);
+    background:var(--ink);
+    padding:1px 6px;
+    margin-right:6px;
+    vertical-align:1px;
+  }
+  .rank-badge.r1{background:var(--red);}
+  .rank-badge.r2{background:var(--yellow);}
+  .rank-badge.r3{background:var(--green);}
+
+  .row-reactions{
+    display:flex; gap:12px; margin-top:8px;
+    font-size:11px; color:var(--ink-soft);
+    font-family:'JetBrains Mono',monospace;
+  }
+  .row-reactions span{display:flex; align-items:center; gap:3px;}
 
   .tally-bar{display:flex; height:6px; width:100%; margin-top:9px; border:1px solid var(--line-strong); overflow:hidden;}
   .tally-bar .seg{height:100%;}
@@ -118,7 +191,7 @@
   .op .post-body{font-size:14.5px;}
 
   .verdict-panel{
-    padding:16px; border-bottom:8px solid var(--line-strong); background:var(--paper-raised);
+    padding:16px; border-bottom:1px solid var(--line); background:var(--paper-raised);
   }
   .verdict-label{font-size:11px; color:var(--ink-soft); margin-bottom:10px; font-family:'JetBrains Mono',monospace;}
   .verdict-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
@@ -136,6 +209,28 @@
   .stamp.white .sq{background:#fff;} .stamp.white.active{background:var(--white-bg); border-color:var(--ink-soft);}
   .stamp:active{transform:scale(.97);}
   .verdict-hint{font-size:11px; color:var(--ink-soft); margin-top:10px; line-height:1.6;}
+
+  /* reaction bar */
+  .reaction-bar{
+    padding:14px 16px;
+    border-bottom:8px solid var(--line-strong);
+    background:var(--paper-raised);
+    display:flex; gap:10px;
+  }
+  .reaction-btn{
+    flex:1;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    background:#fff;
+    border:1.5px solid var(--line-strong);
+    color:var(--ink);
+    font-family:inherit; font-size:13px; font-weight:700;
+    padding:11px 8px;
+    cursor:pointer;
+  }
+  .reaction-btn .cnt{font-family:'JetBrains Mono',monospace; font-weight:700;}
+  .reaction-btn.active[data-react="up"]{background:var(--green-bg); border-color:var(--green); color:var(--green);}
+  .reaction-btn.active[data-react="down"]{background:var(--red-bg); border-color:var(--red); color:var(--red);}
+  .reaction-btn:active{transform:scale(.98);}
 
   .reply-form{padding:14px 16px; display:flex; flex-direction:column; gap:8px;}
   textarea{
@@ -186,6 +281,7 @@
 
 <script>
 const STORAGE_ERR = 'ストレージへの接続に失敗しました。時間をおいて再度お試しください。';
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // ---------- utilities ----------
 function todayStr(){
@@ -214,7 +310,8 @@ const JUDGE_META = {
   white:  {label:'判断不能',     },
 };
 function emptyJudge(){ return {red:0, yellow:0, green:0, white:0}; }
-function judgeTotal(j){ return JUDGE_KEYS.reduce((a,k)=>a+(j[k]||0),0); }
+function emptyReactions(){ return {up:0, down:0}; }
+function judgeTotal(j){ return JUDGE_KEYS.reduce((a,k)=>a+(j?.[k]||0),0); }
 
 // ---------- state ----------
 const state = {
@@ -225,6 +322,8 @@ const state = {
   loadError: null,
   showNewSheet: false,
   posting: false,
+  query: '',
+  tab: 'new',           // 'new' | 'rank'
 };
 
 // ---------- storage layer ----------
@@ -274,6 +373,8 @@ async function createThread(title, body){
     lastActivity: now,
     judge: emptyJudge(),
     voters: {},
+    reactions: emptyReactions(),
+    reactors: {},
     posts: [{ id: 'op', authorId: state.myId, body, createdAt: now }],
   };
   await saveThread(id, thread);
@@ -283,6 +384,7 @@ async function createThread(title, body){
     excerpt: body.slice(0,80),
     postCount: 1,
     judge: emptyJudge(),
+    reactions: emptyReactions(),
   };
   const list = [summary, ...state.index];
   await saveIndex(list);
@@ -319,6 +421,38 @@ async function castVote(threadId, color){
     await saveIndex(state.index);
   }
   return thread;
+}
+
+async function castReaction(threadId, kind){ // 'up' | 'down'
+  const thread = await loadThread(threadId);
+  thread.reactions = thread.reactions || emptyReactions();
+  thread.reactors  = thread.reactors  || {};
+  const prev = thread.reactors[state.myId];
+  if(prev === kind){
+    // toggle off
+    thread.reactions[kind] = Math.max(0, (thread.reactions[kind]||0) - 1);
+    delete thread.reactors[state.myId];
+  }else{
+    if(prev) thread.reactions[prev] = Math.max(0, (thread.reactions[prev]||0) - 1);
+    thread.reactions[kind] = (thread.reactions[kind]||0) + 1;
+    thread.reactors[state.myId] = kind;
+  }
+  await saveThread(threadId, thread);
+  const idx = state.index.findIndex(t=>t.id===threadId);
+  if(idx>-1){
+    state.index[idx].reactions = thread.reactions;
+    await saveIndex(state.index);
+  }
+  return thread;
+}
+
+// ---------- ranking ----------
+function rankScore(t){
+  const j  = judgeTotal(t.judge || emptyJudge());
+  const up = t.reactions?.up   || 0;
+  const dn = t.reactions?.down || 0;
+  const pc = t.postCount || 0;
+  return j * 1 + up * 3 - dn * 2 + pc * 0.5;
 }
 
 // ---------- render ----------
@@ -367,29 +501,73 @@ function tallyBarHtml(judge){
 }
 
 function listHtml(){
-  if(state.index.length === 0){
-    return `<main><div class="empty-state"><div class="big">⬜ ⬜ ⬜</div>まだスレッドがありません。<br>最初のスレを立ててみましょう。</div></main>`;
+  return `<main>
+    <div class="list-controls">
+      <div class="search-wrap">
+        <input id="search-input" class="search-input" type="text"
+               placeholder="🔍 タイトル・抜粋を検索"
+               value="${escapeHtml(state.query)}">
+        <button class="search-clear ${state.query ? 'show' : ''}" id="search-clear" aria-label="クリア">✕</button>
+      </div>
+      <div class="tabs">
+        <button class="tab ${state.tab==='new'?'active':''}"  data-tab="new">🆕 新着</button>
+        <button class="tab ${state.tab==='rank'?'active':''}" data-tab="rank">🏆 24時間ランキング</button>
+      </div>
+    </div>
+    <div id="list-container">${listRowsHtml()}</div>
+  </main>`;
+}
+
+function listRowsHtml(){
+  const q = state.query.trim().toLowerCase();
+  let list = state.index.filter(t =>
+    !q || (t.title||'').toLowerCase().includes(q) || (t.excerpt||'').toLowerCase().includes(q)
+  );
+
+  if(state.tab === 'rank'){
+    const cut = Date.now() - DAY_MS;
+    list = list.filter(t => new Date(t.lastActivity).getTime() >= cut);
+    list.sort((a,b) => rankScore(b) - rankScore(a));
+  }else{
+    list.sort((a,b) => new Date(b.lastActivity) - new Date(a.lastActivity));
   }
-  const rows = state.index
-    .slice()
-    .sort((a,b)=> new Date(b.lastActivity) - new Date(a.lastActivity))
-    .map(t => `
+
+  if(state.index.length === 0){
+    return `<div class="empty-state"><div class="big">⬜ ⬜ ⬜</div>まだスレッドがありません。<br>最初のスレを立ててみましょう。</div>`;
+  }
+  if(list.length === 0){
+    const msg = state.tab === 'rank'
+      ? '24時間以内に更新されたスレッドがありません。'
+      : '該当するスレッドが見つかりません。';
+    return `<div class="empty-state">${msg}</div>`;
+  }
+
+  return list.map((t, i) => {
+    const rankBadge = (state.tab === 'rank' && i < 3)
+      ? `<span class="rank-badge r${i+1}">${i+1}位</span>` : '';
+    const up = t.reactions?.up || 0;
+    const dn = t.reactions?.down || 0;
+    const reactionsRow = (up || dn)
+      ? `<div class="row-reactions"><span>👍 ${up}</span><span>👎 ${dn}</span></div>`
+      : '';
+    return `
     <button class="thread-row" data-open="${t.id}">
       <div class="top-line">
-        <div class="title">${escapeHtml(t.title)}</div>
+        <div class="title">${rankBadge}${escapeHtml(t.title)}</div>
         <div class="count">${t.postCount}件</div>
       </div>
       <div class="meta">${fmtTime(t.lastActivity)} 更新</div>
       <div class="excerpt">${escapeHtml(t.excerpt||'')}</div>
       ${tallyBarHtml(t.judge)}
-    </button>`).join('');
-  return `<main>${rows}</main>`;
+      ${reactionsRow}
+    </button>`;
+  }).join('');
 }
 
 function threadHtml(t){
   const op = t.posts[0];
   const replies = t.posts.slice(1);
-  const myVote = t.voters[state.myId];
+  const myVote = t.voters?.[state.myId];
   const stamps = JUDGE_KEYS.map(k => {
     const meta = JUDGE_META[k];
     return `<button class="stamp ${k} ${myVote===k?'active':''}" data-vote="${k}">
@@ -398,6 +576,19 @@ function threadHtml(t){
       <span class="cnt mono">${t.judge[k]||0}</span>
     </button>`;
   }).join('');
+
+  const myR = t.reactors?.[state.myId];
+  const up = t.reactions?.up   || 0;
+  const dn = t.reactions?.down || 0;
+  const reactionBar = `
+    <div class="reaction-bar">
+      <button class="reaction-btn ${myR==='up'?'active':''}" data-react="up">
+        👍 参考になった <span class="cnt">${up}</span>
+      </button>
+      <button class="reaction-btn ${myR==='down'?'active':''}" data-react="down">
+        👎 参考にならない <span class="cnt">${dn}</span>
+      </button>
+    </div>`;
 
   const replyRows = replies.map(p => `
     <div class="post">
@@ -421,6 +612,7 @@ function threadHtml(t){
       <div class="verdict-grid">${stamps}</div>
       <div class="verdict-hint">タップで投票（変更可）。1つのIDにつき1票、24時間ごとにIDが変わります。</div>
     </div>
+    ${reactionBar}
     ${replyRows}
     <div class="reply-form">
       <textarea id="reply-input" placeholder="コメントを書く"></textarea>
@@ -455,6 +647,12 @@ function newThreadSheetHtml(){
 }
 
 // ---------- events ----------
+function bindRowOpen(){
+  document.querySelectorAll('[data-open]').forEach(el => {
+    el.onclick = () => openThread(el.getAttribute('data-open'));
+  });
+}
+
 function bindEvents(){
   const openBtn = document.getElementById('new-thread-btn');
   if(openBtn) openBtn.onclick = () => { state.showNewSheet = true; render(); };
@@ -488,8 +686,49 @@ function bindEvents(){
     }
   };
 
-  document.querySelectorAll('[data-open]').forEach(el => {
-    el.onclick = () => openThread(el.getAttribute('data-open'));
+  bindRowOpen();
+
+  // search
+  const si = document.getElementById('search-input');
+  const sc = document.getElementById('search-clear');
+  if(si){
+    si.oninput = () => {
+      state.query = si.value;
+      if(sc) sc.classList.toggle('show', !!state.query);
+      const cont = document.getElementById('list-container');
+      if(cont){
+        cont.innerHTML = listRowsHtml();
+        bindRowOpen();
+      }
+    };
+    // フォーカス時にカーソルを末尾へ（部分再描画では飛ばないが念のため）
+    if(state.query){
+      si.focus();
+      const v = si.value; si.value = ''; si.value = v;
+    }
+  }
+  if(sc){
+    sc.onclick = () => {
+      state.query = '';
+      if(si) si.value = '';
+      sc.classList.remove('show');
+      const cont = document.getElementById('list-container');
+      if(cont){
+        cont.innerHTML = listRowsHtml();
+        bindRowOpen();
+      }
+      if(si) si.focus();
+    };
+  }
+
+  // tabs
+  document.querySelectorAll('[data-tab]').forEach(el => {
+    el.onclick = () => {
+      const t = el.getAttribute('data-tab');
+      if(state.tab === t) return;
+      state.tab = t;
+      render();
+    };
   });
 
   const back = document.querySelector('[data-back]');
@@ -500,6 +739,19 @@ function bindEvents(){
       const color = el.getAttribute('data-vote');
       try{
         const updated = await castVote(state.currentThread.id, color);
+        state.currentThread = updated;
+        render();
+      }catch(e){
+        alert(STORAGE_ERR);
+      }
+    };
+  });
+
+  document.querySelectorAll('[data-react]').forEach(el => {
+    el.onclick = async () => {
+      const kind = el.getAttribute('data-react');
+      try{
+        const updated = await castReaction(state.currentThread.id, kind);
         state.currentThread = updated;
         render();
       }catch(e){
