@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "iyouse-board",
+  "main": "worker.js",
+  "compatibility_date": "2026-09-10",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "iyouse-board-db",
+      "database_id": "49441938-927d-4b22-90ce-0c67e18fe714"
+    }
+  ]
+}
